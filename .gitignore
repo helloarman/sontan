@@ -1,0 +1,8 @@
+_site/
+node_modules/
+tools/package-lock.json
+.claude/
+
+# Original stock artwork. Kept out of the repo because a public repo would redistribute the
+# source file. The site only needs the images already baked from it. Needed only for `npm run layers`.
+tools/source-stages.svg

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>সন্তান গর্ভাবস্থা ট্র্যাকার</title>
+<meta name="description" content="দিনে দিনে আপনার শিশুর বেড়ে ওঠা: ২৬৬ দিনের ছবি, আকার, ওজন আর ত্রিমাত্রিক ট্র্যাকার।">
+<meta name="theme-color" content="#0F5C45">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="সন্তান">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preload" href="data/pregnancy.json" as="fetch" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 28 28"><g fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="14" cy="14" r="2.6"/><path id="petal" d="M14 3c2.6 3 2.6 5.4 0 8c-2.6-2.6-2.6-5 0-8z"/><use href="#petal" transform="rotate(45 14 14)"/><use href="#petal" transform="rotate(90 14 14)"/><use href="#petal" transform="rotate(135 14 14)"/><use href="#petal" transform="rotate(180 14 14)"/><use href="#petal" transform="rotate(225 14 14)"/><use href="#petal" transform="rotate(270 14 14)"/><use href="#petal" transform="rotate(315 14 14)"/></g></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g></symbol>
+  <symbol id="prev" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 8v6M9 11h6"/></g></symbol>
+</svg>
+
+<div id="loading" class="center-msg" role="status">লোড হচ্ছে…</div>
+<div id="fatal" class="center-msg" role="alert" hidden></div>
+
+<!-- ================= ONBOARDING ================= -->
+<main id="onboard" class="onboard" hidden>
+  <div class="brand"><svg width="30" height="30"><use href="#logo"/></svg><span class="brand-name">সন্তান</span></div>
+  <div class="trio" aria-hidden="true">
+    <div class="trio-side"><img src="assets/days/day-040.webp" alt="" width="60" height="60"></div>
+    <div class="trio-main"><img src="assets/days/day-150.webp" alt="গর্ভে শিশুর চিত্র" width="128" height="128"></div>
+    <div class="trio-side"><img src="assets/days/day-260.webp" alt="" width="64" height="64"></div>
+  </div>
+  <div class="ob-copy">
+    <h1>দিনে দিনে আপনার শিশুর বেড়ে ওঠা</h1>
+    <p>একটি তারিখ দিন — আমরা হিসাব করে দেখাব শিশু এখন কত বড়, দেখতে কেমন, আর প্রসবের আর কত দিন বাকি।</p>
+  </div>
+  <form id="date-form" class="card ob-form" novalidate>
+    <p class="strong">কোন তারিখটি আপনার জানা আছে?</p>
+    <div class="seg" role="group" aria-label="তারিখের ধরন">
+      <button type="button" id="seg-due" aria-pressed="true">প্রসবের সম্ভাব্য তারিখ</button>
+      <button type="button" id="seg-conc" aria-pressed="false">গর্ভধারণের তারিখ</button>
+    </div>
+    <div class="field">
+      <label for="date-input" id="date-label"></label>
+      <input id="date-input" type="date" required>
+      <p class="help" id="date-help"></p>
+    </div>
+    <p id="date-error" class="error" role="alert" hidden></p>
+    <button type="submit" class="btn-primary">হিসাব করুন</button>
+    <button type="button" id="ob-cancel" class="btn-ghost" hidden>ফিরে যান</button>
+  </form>
+  <div class="privacy">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></g></svg>
+    <span>আপনার তারিখ শুধু এই ফোনেই সংরক্ষিত থাকে। ডাক্তার যে প্রসবের তারিখ (EDD) দিয়েছেন, জানা থাকলে সেটিই দিন।</span>
+  </div>
+  <button type="button" id="wipe" class="link-danger" hidden>এই ফোন থেকে সব তথ্য মুছে ফেলুন</button>
+</main>
+
+<!-- ================= HOME ================= -->
+<main id="home" class="home" hidden>
+  <header class="topbar">
+    <div class="brand small"><svg width="26" height="26"><use href="#logo"/></svg>
+      <div class="brand-text"><span class="brand-name">সন্তান</span><span class="muted xs" id="today-line"></span></div>
+    </div>
+    <button type="button" id="change-date" class="btn-pill"><svg width="18" height="18"><use href="#cal"/></svg>তারিখ বদলান</button>
+  </header>
+
+  <div class="layout">
+    <div class="col-hero">
+      <div class="age">
+        <span class="muted">আজ আপনার গর্ভাবস্থা</span>
+        <span class="age-line" id="age-line"></span>
+        <span class="age-sub" id="month-line"></span>
+      </div>
+      <p id="alert" class="alert" hidden></p>
+
+      <section class="hero" aria-label="শিশুর বৃদ্ধি">
+        <div class="hero-nav">
+          <button type="button" id="prev-day" class="round" aria-label="আগের দিন"><svg width="20" height="20"><use href="#prev"/></svg></button>
+          <div class="hero-title">
+            <span class="hero-tag" id="view-tag"></span>
+            <span class="hero-week" id="view-week"></span>
+            <span class="hero-date" id="view-date"></span>
+          </div>
+          <button type="button" id="next-day" class="round" aria-label="পরের দিন"><svg width="20" height="20"><use href="#next"/></svg></button>
+        </div>
+
+        <div class="stage">
+          <img id="poster" class="poster" alt="" width="480" height="480">
+          <canvas id="tracker" aria-hidden="true"></canvas>
+        </div>
+        <p class="stage-hint" id="stage-hint">শিশুকে ছুঁয়ে দেখুন · আঙুল পাশে টেনে দিন বদলান</p>
+
+        <div class="slider">
+          <label for="day-range" class="sr-only">গর্ভধারণের পর দিন</label>
+          <input type="range" id="day-range" min="1" max="266" step="1">
+          <div class="slider-scale"><span>দিন ১</span><span id="day-count"></span><span>দিন ২৬৬</span></div>
+        </div>
+
+        <div class="hero-size">
+          <span class="op">আপনার শিশুর আকার এখন প্রায়</span>
+          <span class="fruit" id="fruit"></span>
+        </div>
+
+        <div class="tiles">
+          <div class="tile"><span class="xs op" id="len-label"></span><span class="tile-v" id="len-text"></span></div>
+          <div class="tile"><span class="xs op">ওজন</span><span class="tile-v" id="wt-text"></span></div>
+        </div>
+        <p class="basis-note" id="basis-note" hidden>২০ সপ্তাহ থেকে মাপা হয় মাথা থেকে পা পর্যন্ত, তাই সংখ্যাটি হঠাৎ বড় দেখায়। শিশু এক দিনে এতটা বাড়েনি।</p>
+
+        <div class="note" id="event" hidden><svg width="20" height="20"><use href="#heart"/></svg><span id="event-text"></span></div>
+        <div class="note stacked">
+          <div class="note-row"><span class="note-head">এই সপ্তাহে</span><span id="highlight"></span></div>
+          <div class="note-row"><span class="note-head">দেখতে কেমন</span><span id="looks"></span></div>
+          <div class="note-row"><span class="note-head">নড়াচড়া</span><span id="moves"></span></div>
+        </div>
+
+        <button type="button" id="back-today" class="btn-gold" hidden>আজকের দিনে ফিরুন</button>
+      </section>
+    </div>
+
+    <div class="col-rest">
+      <section class="block" aria-label="প্রতিদিনের ছবি">
+        <div class="block-head"><span class="strong">প্রতিদিনের ছবি</span><span class="muted xs">২৬৬ দিনের ২৬৬টি ছবি</span></div>
+        <div class="strip" id="strip"></div>
+      </section>
+
+      <section class="block" aria-label="সপ্তাহ">
+        <div class="block-head"><span class="strong">সপ্তাহ বেছে নিন</span></div>
+        <div class="weeks" id="weeks"></div>
+      </section>
+
+      <section class="card" aria-label="অগ্রগতি">
+        <div class="row-between"><span class="big-strong"><span id="pct-text"></span> পথ পেরিয়েছেন</span><span class="muted sm">৪০ সপ্তাহের মধ্যে</span></div>
+        <div class="progress"><div class="progress-fill" id="pct-bar"></div><i style="left:32.5%"></i><i style="left:67.5%"></i></div>
+        <div class="tri-scale"><span>১ম ত্রৈমাসিক</span><span>২য় ত্রৈমাসিক</span><span>৩য় ত্রৈমাসিক</span></div>
+        <div class="due-row">
+          <div class="due-icon"><svg width="24" height="24"><use href="#cal"/></svg></div>
+          <div class="due-text"><span class="muted sm">প্রসবের সম্ভাব্য তারিখ</span><span class="due-date" id="due-text"></span><span class="sm" id="due-bangla"></span></div>
+        </div>
+        <p class="due-line" id="due-line"></p>
+      </section>
+
+      <div class="stats">
+        <div class="stat"><span class="muted xs">গর্ভধারণ (আনুমানিক)</span><b id="conc-text"></b></div>
+        <div class="stat"><span class="muted xs">শেষ মাসিক (আনুমানিক)</span><b id="lmp-text"></b></div>
+        <div class="stat"><span class="muted xs">ত্রৈমাসিক</span><b id="trim-text"></b></div>
+        <div class="stat"><span class="muted xs">বাকি সময়</span><b id="left-text"></b></div>
+      </div>
+
+      <section class="card" id="install-card" aria-label="হোম স্ক্রিনে যোগ করুন" hidden>
+        <div class="install">
+          <img src="assets/icons/icon-192.png" alt="" width="52" height="52">
+          <div><span class="strong">হোম স্ক্রিনে ‘সন্তান’ অ্যাপ রাখুন</span><p class="muted sm">অ্যাপের মতো এক ছোঁয়ায় খুলুন, ইন্টারনেট ছাড়াও চলবে।</p></div>
+        </div>
+        <div class="install-actions">
+          <button type="button" id="install-btn" class="btn-primary small"><svg width="18" height="18"><use href="#plus"/></svg>যোগ করুন</button>
+          <button type="button" id="install-later" class="btn-ghost small">পরে</button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="এই সময়ের কাজ" id="reminders-card" hidden>
+        <h2>এই সপ্তাহে যা মনে রাখবেন</h2>
+        <div class="chips" id="reminders"></div>
+      </section>
+
+      <section class="card" aria-label="মায়ের যত্ন">
+        <div><span class="tag" id="mother-tag"></span><h2>এই সময়ে মায়ের যত্ন</h2></div>
+        <div class="chips" id="body-chips"></div>
+        <div class="tips" id="tips"></div>
+        <div class="food"><b class="sm">থালায় রাখুন</b><span id="food"></span></div>
+      </section>
+
+      <section class="card" aria-label="গর্ভকালীন চেকআপ">
+        <div><h2>গর্ভকালীন চেকআপ (ANC)</h2><span class="muted sm">কমপক্ষে ৪ বার — চেকআপ হয়ে গেলে টিক দিন</span></div>
+        <div class="anc" id="anc"></div>
+        <p class="muted fine">বিশ্ব স্বাস্থ্য সংস্থা এখন ৮ বার চেকআপের পরামর্শ দেয়। সরকারি কমিউনিটি ক্লিনিক ও উপজেলা স্বাস্থ্য কমপ্লেক্সে এই সেবা বিনামূল্যে।</p>
+      </section>
+
+      <section class="danger" aria-label="বিপদচিহ্ন">
+        <div class="danger-head"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.1"/></g></svg><h2>এই লক্ষণ দেখলে দেরি নয়</h2></div>
+        <ul id="danger-list"></ul>
+        <p>দ্রুত নিকটস্থ হাসপাতালে যান অথবা ফোন করুন:</p>
+        <div class="calls" id="calls"></div>
+      </section>
+
+      <footer class="foot">
+        <p id="disclaimer"></p>
+        <details>
+          <summary>তথ্যসূত্র</summary>
+          <ul id="sources"></ul>
+        </details>
+      </footer>
+    </div>
+  </div>
+</main>
+
+<dialog id="install-dialog" class="sheet" aria-labelledby="install-title">
+  <h2 id="install-title">হোম স্ক্রিনে যোগ করবেন যেভাবে</h2>
+  <ol id="install-steps"></ol>
+  <button type="button" id="install-close" class="btn-primary small">বুঝেছি</button>
+</dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

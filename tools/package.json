@@ -1,0 +1,20 @@
+{
+  "name": "santan-build-tools",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Regenerates data/pregnancy.json and every baked image. Not needed at runtime.",
+  "scripts": {
+    "data": "node build-data.mjs",
+    "layers": "node bake-layers.mjs",
+    "images": "node bake-images.mjs",
+    "vendor": "esbuild three-entry.js --bundle --minify --format=esm --outfile=../vendor/three.min.js",
+    "build": "node build-data.mjs && node bake-images.mjs",
+    "site": "node build-site.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "25.16.0",
+    "three": "0.187.0"
+  }
+}
