@@ -1,10 +1,10 @@
 // Offline support. Bump VERSION whenever a shipped file changes.
-const VERSION = 'santan-v2';
+const VERSION = 'santan-v5';
 const stages = [0, 1, 2, 3, 4, 5, 6, 7, 8].flatMap((i) => [`assets/layers/stage-${i}-womb.webp`, `assets/layers/stage-${i}-baby.webp`]);
 const fonts = ['400-bn', '400-latin', '500-bn', '500-latin', '600-bn', '600-latin', '700-bn', '700-latin'].map((f) => `assets/fonts/hind-${f}.woff2`);
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
-  'js/app.js', 'js/scene.js', 'js/growth.js', 'vendor/three.min.js', 'data/pregnancy.json',
+  'js/app.js', 'js/scene.js', 'js/growth.js', 'js/messages.js', 'vendor/three.min.js', 'data/pregnancy.json',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/icon-maskable-512.png', 'assets/icons/apple-touch-icon.png', 'assets/icons/favicon-48.png',
   'assets/layers/early-womb.webp', 'assets/fonts/notoserif-bn.woff2', 'assets/fonts/notoserif-latin.woff2',
   'assets/days/day-040.webp', 'assets/days/day-150.webp', 'assets/days/day-260.webp',

@@ -1,6 +1,7 @@
 // App controller: reads data/pregnancy.json, keeps the due date in localStorage,
 // and shows the right content for today or any browsed day.
 import { TOTAL_DAYS, dayImage, dayFromGa } from './growth.js';
+import { messagesForDay, moodOf, relationGroup } from './messages.js';
 
 const STORAGE_KEY = 'aanchol.v1';
 const $ = (id) => document.getElementById(id);
@@ -27,7 +28,7 @@ function bangla(d) {
   return `${bn(n + 1)} ${BM[m]} ${bn(by)} বঙ্গাব্দ`;
 }
 
-// ---------- Storage: { dueDate: 'YYYY-MM-DD', anc: [bool x4], installLater: bool } ----------
+// ---------- Storage: { dueDate: 'YYYY-MM-DD', relation: { id, name }, anc: [bool x4], installLater: bool } ----------
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -41,7 +42,7 @@ function save() {
 }
 
 let DATA = null, store = null, tracker = null, sceneLoading = null;
-const ui = { mode: 'due', viewDay: null, built: false, renderedToday: null };
+const ui = { mode: 'due', viewDay: null, built: false, renderedToday: null, relationId: null, relationsBuilt: false };
 
 // ---------- Derived values ----------
 function pregnancy() {
@@ -54,6 +55,37 @@ function pregnancy() {
 const lengthText = (cm) => (cm < .1 ? '১ মিলিমিটারের কম' : cm < 1 ? `${bn((cm * 10).toFixed(1))} মিলিমিটার` : `${bn(cm.toFixed(1))} সেমি`);
 const weightText = (g) => (g == null || g < 1 ? '১ গ্রামের কম' : g < 10 ? `${bn(g.toFixed(1))} গ্রাম` : g < 1000 ? `${bn(Math.round(g))} গ্রাম` : `${bn((g / 1000).toFixed(2))} কেজি`);
 const weekOf = (d) => DATA.weeks[Math.min(40, Math.max(2, d.gaWeek))];
+
+// ---------- Relation picker ----------
+function buildRelations() {
+  if (ui.relationsBuilt) return;
+  ui.relationsBuilt = true;
+  const make = (id, name) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'rel'; b.dataset.rel = id; b.textContent = name;
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => { setRelation(id); if (id === 'other') $('rel-custom').focus(); });
+    return b;
+  };
+  DATA.relations.forEach((r) => $(r.group === 'family' ? 'rel-more' : 'rel-main').appendChild(make(r.id, r.name)));
+  $('rel-more').appendChild(make('other', 'অন্য'));
+}
+function setRelation(id, customName) {
+  ui.relationId = id;
+  document.querySelectorAll('.rel').forEach((b) => b.setAttribute('aria-pressed', b.dataset.rel === id));
+  $('rel-custom-wrap').hidden = id !== 'other';
+  if (customName !== undefined) $('rel-custom').value = customName;
+  $('date-error').hidden = true;
+}
+function readRelation() {
+  if (!ui.relationId) return null;
+  if (ui.relationId === 'other') {
+    const name = $('rel-custom').value.trim();
+    return name ? { id: 'other', name } : null;
+  }
+  const preset = DATA.relations.find((r) => r.id === ui.relationId);
+  return { id: preset.id, name: preset.name };
+}
 
 // ---------- Onboarding ----------
 function renderForm(prefill) {
@@ -74,6 +106,8 @@ function showError(msg) { const e = $('date-error'); e.textContent = msg; e.hidd
 
 function submitDate(ev) {
   ev.preventDefault();
+  const relation = readRelation();
+  if (!relation) return showError(ui.relationId === 'other' ? 'শিশু আপনাকে কী বলে ডাকবে, সেটি লিখুন।' : 'শিশুর সাথে আপনার সম্পর্ক বেছে নিন।');
   const d = parse($('date-input').value), t = today();
   if (!d) return showError('অনুগ্রহ করে একটি তারিখ বেছে নিন।');
   let due;
@@ -87,7 +121,7 @@ function submitDate(ev) {
     if (ahead < -14) return showError('প্রসবের তারিখ ২ সপ্তাহের বেশি আগে পেরিয়ে গেছে।');
     due = d;
   }
-  store = { ...(store || {}), dueDate: iso(due), anc: store && store.anc ? store.anc : [false, false, false, false] };
+  store = { ...(store || {}), relation, dueDate: iso(due), anc: store && store.anc ? store.anc : [false, false, false, false] };
   save();
   ui.viewDay = null;
   showHome();
@@ -95,7 +129,11 @@ function submitDate(ev) {
 
 function showOnboard(fromHome) {
   $('home').hidden = true; $('onboard').hidden = false;
-  $('ob-cancel').hidden = !fromHome; $('wipe').hidden = !fromHome;
+  buildRelations();
+  // Someone who saved a date before relations existed must choose one before continuing.
+  $('ob-cancel').hidden = !(fromHome && store && store.relation); $('wipe').hidden = !fromHome;
+  if (store && store.relation) setRelation(store.relation.id, store.relation.id === 'other' ? store.relation.name : '');
+  else setRelation(null, '');
   if (fromHome && store) { ui.mode = 'due'; renderForm(store.dueDate); } else renderForm();
   window.scrollTo(0, 0);
 }
@@ -151,6 +189,82 @@ function renderAnc(p) {
     else { text = 'আসন্ন'; cls = 't-soon'; }
     tag.textContent = text; tag.className = `anc-tag ${cls}`;
   });
+}
+
+function renderRelationText() {
+  const group = relationGroup(DATA, store.relation);
+  $('age-label').textContent = group === 'mother' ? 'আজ আপনার গর্ভাবস্থা' : 'আজ গর্ভাবস্থার বয়স';
+  $('size-label').textContent = group === 'family' ? 'শিশুর আকার এখন প্রায়' : 'আপনার শিশুর আকার এখন প্রায়';
+  $('talk-note').textContent = DATA.babyMessages.note;
+}
+
+// ---------- The baby's messages: one animated pop-up at a time over the 3D view ----------
+const MOODS = {
+  excited: { icon: ['fx-spark', '#E9A92B'], fx: [['fx-spark', '#F2C46D'], ['fx-heart', '#F59DAB'], ['fx-spark', '#FFE3A6'], ['fx-spark', '#F2C46D'], ['fx-heart', '#FFB9C7'], ['fx-spark', '#FFE3A6']] },
+  curious: { icon: ['fx-bloom', '#F06385'], fx: [['fx-bloom', '#F59DAB'], ['fx-bloom', '#FFC9D4'], ['fx-bloom', '#F59DAB'], ['fx-bloom', '#FFC9D4']] },
+  tender: { icon: ['fx-heart', '#E8476F'], fx: [['fx-heart', '#E8476F'], ['fx-heart', '#F59DAB'], ['fx-heart', '#F06385'], ['fx-heart', '#FFB9C7'], ['fx-heart', '#E8476F'], ['fx-heart', '#F59DAB']] },
+};
+const symbolMarkup = ([id, color]) => `<svg viewBox="0 0 24 24" style="color:${color}"><use href="#${id}"/></svg>`;
+const WORD_MS = 90;
+const pop = { list: [], i: 0, timer: 0 };
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function hidePop() {
+  const el = $('baby-pop');
+  if (el.classList.contains('is-on')) el.classList.replace('is-on', 'is-out');
+}
+// Hearts or sparkles drift up from the baby towards the bubble.
+function burst(mood) {
+  if (calm()) return;
+  const fx = $('pop-fx');
+  MOODS[mood].fx.forEach((symbol, i) => {
+    const s = document.createElement('span');
+    s.innerHTML = symbolMarkup(symbol);
+    // Alternate sides so they rise beside the baby, not across its face.
+    s.style.setProperty('--x', `${i % 2 ? 72 + Math.random() * 12 : 12 + Math.random() * 12}%`);
+    s.style.setProperty('--drift', `${(i % 2 ? 1 : -1) * Math.random() * 26}px`);
+    s.style.setProperty('--spin', `${(Math.random() - .5) * 50}deg`);
+    s.style.setProperty('--size', `${16 + Math.random() * 12}px`);
+    s.style.animationDelay = `${i * 170}ms`;
+    s.addEventListener('animationend', () => s.remove());
+    fx.appendChild(s);
+  });
+}
+function nextPop() {
+  clearTimeout(pop.timer);
+  // Wait quietly while nobody is looking, so messages are not missed.
+  if (document.hidden || $('home').hidden || !pop.list.length) { pop.timer = setTimeout(nextPop, 2000); return; }
+  const i = pop.i % pop.list.length, text = pop.list[i], mood = moodOf(text);
+  pop.i = i + 1;
+  const words = text.split(/\s+/);
+  $('pop-icon').innerHTML = symbolMarkup(MOODS[mood].icon);
+  $('pop-text').replaceChildren(...words.flatMap((word, w) => {
+    const span = document.createElement('span');
+    span.className = 'pop-word'; span.textContent = word;
+    span.style.setProperty('--w', w);
+    return [span, ' '];
+  }));
+  const el = $('baby-pop');
+  el.className = 'baby-pop';
+  void el.offsetWidth; // restart the entrance animation
+  el.className = `baby-pop is-on mood-${mood}`;
+  burst(mood);
+  if (tracker && tracker.react) tracker.react(mood);
+  // Time to reveal the words, then time to read them.
+  const stay = words.length * WORD_MS + Math.max(4200, text.length * 70);
+  pop.timer = setTimeout(() => { hidePop(); pop.timer = setTimeout(nextPop, 1300); }, stay);
+}
+function renderTalk(d) {
+  const msgs = messagesForDay(DATA, d, store.relation);
+  $('talk-list').replaceChildren(...msgs.map((text) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    return li;
+  }));
+  clearTimeout(pop.timer);
+  hidePop();
+  pop.list = msgs; pop.i = 0;
+  pop.timer = setTimeout(nextPop, 900);
 }
 
 function renderToday(p) {
@@ -219,6 +333,7 @@ function renderDay(day, { smooth = true } = {}) {
   $('looks').textContent = w.looks;
   $('moves').textContent = w.moves;
   $('back-today').hidden = isToday;
+  renderTalk(d);
 
   const prev = $('strip').querySelector('[aria-current="true"]');
   if (prev) prev.removeAttribute('aria-current');
@@ -243,6 +358,7 @@ function showHome() {
   $('onboard').hidden = true; $('home').hidden = false;
   buildOnce();
   const p = pregnancy();
+  renderRelationText();
   renderToday(p);
   renderDay(ui.viewDay || p.todayDay, { smooth: false });
   startScene();
@@ -260,6 +376,7 @@ function startScene() {
       onPickDay: goDay,
       onScrub: (d) => renderDay(d, { smooth: false }),
       onReady: () => stage.classList.add('is-live'),
+      onTapBaby: nextPop,
     });
     if (!tracker) return failed();
     tracker.setDay(DATA.days[ui.viewDay - 1], pregnancy().todayDay);
@@ -313,6 +430,8 @@ function wire() {
   $('date-input').addEventListener('input', () => { $('date-error').hidden = true; });
   $('change-date').addEventListener('click', () => showOnboard(true));
   $('ob-cancel').addEventListener('click', showHome);
+  $('baby-pop').addEventListener('click', nextPop);
+  $('rel-custom').addEventListener('input', () => { $('date-error').hidden = true; });
   $('wipe').addEventListener('click', () => {
     if (!confirm('তারিখ ও চেকআপের টিক এই ফোন থেকে মুছে যাবে। মুছে ফেলবেন?')) return;
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* nothing stored */ }
@@ -355,6 +474,6 @@ async function main() {
   store = load();
   wire();
   registerSW();
-  if (store) showHome(); else showOnboard(false);
+  if (store && store.relation) showHome(); else showOnboard(!!store);
 }
 main();

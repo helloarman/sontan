@@ -10,6 +10,8 @@ export const SOURCES = [
   { id: 'wiki-movement', title: 'Wikipedia: Fetal movement', url: 'https://en.wikipedia.org/wiki/Fetal_movement', usedFor: 'When each type of movement begins (the article counts from fertilization; two weeks are added here).' },
 ];
 
+export const MESSAGE_NOTE = 'শিশুর এই কথাগুলো ভালোবেসে কল্পনা করা; তথ্যগুলো গড় বিকাশের ভিত্তিতে। এগুলো চিকিৎসার পরামর্শ নয়।';
+
 export const DISCLAIMER = 'সব হিসাব গড় মাপের ভিত্তিতে; প্রতিটি শিশু আলাদা। ছবিগুলো প্রতীকী, আসল অনুপাতে নয়। চিকিৎসার সিদ্ধান্তের জন্য সবসময় আপনার ডাক্তার বা মিডওয়াইফের পরামর্শ নিন।';
 
 // Length anchors: [GA day, cm]

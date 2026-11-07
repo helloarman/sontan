@@ -112,7 +112,7 @@ function dotTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-export function createTrackerScene(canvas, { onPickDay, onReady, onScrub } = {}) {
+export function createTrackerScene(canvas, { onPickDay, onReady, onScrub, onTapBaby } = {}) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'low-power' });
@@ -190,6 +190,7 @@ export function createTrackerScene(canvas, { onPickDay, onReady, onScrub } = {})
     day: 0, today: 1, motion: null, targetWomb: .6, targetBaby: 1, womb: .6, babyS: 1,
     dial: 0, targetDial: 0, tiltX: 0, tiltY: 0, pointerX: 0, pointerY: 0,
     kickEnv: 0, kickBoost: 0, nextKick: 3, hicT: 99, hicLeft: 0, nextHic: 20, hic: 0, center: toV([.5, .5]),
+    glow: 0, nod: 0,
     time: 0, last: 0, running: false, visible: true, inView: true, ready: false,
   };
 
@@ -226,6 +227,14 @@ export function createTrackerScene(canvas, { onPickDay, onReady, onScrub } = {})
 
   function kick(strength) { state.kickEnv = 1; state.kickBoost = strength || 0; }
 
+  // The baby performs along with its message.
+  function react(mood) {
+    if (reduced.matches) return;
+    if (mood === 'excited') kick(Math.max(.024, state.motion ? state.motion.kick : .024));
+    else if (mood === 'curious') state.nod = 1;
+    else state.glow = 1;
+  }
+
   function update(dt) {
     const m = state.motion; if (!m) return;
     const still = reduced.matches;
@@ -247,6 +256,8 @@ export function createTrackerScene(canvas, { onPickDay, onReady, onScrub } = {})
     if (!still && m.hiccup > 0 && t > state.nextHic) { state.hicLeft = 5; state.hicT = t; state.nextHic = t + 60 / m.hiccup * (.7 + Math.random() * .6); }
     if (state.hicLeft > 0 && t >= state.hicT) { state.hic = 1; state.hicLeft--; state.hicT = t + 1.2; }
     state.hic = Math.max(0, state.hic - dt * 7);
+    state.glow = Math.max(0, state.glow - dt * .45);
+    state.nod = Math.max(0, state.nod - dt * .5);
 
     let beat = 0;
     if (m.bpm > 0 && m.heart > 0 && !still) { const ph = (t * m.bpm / 60) % 1; beat = (Math.exp(-ph * 14) + .6 * Math.exp(-Math.pow(ph - .28, 2) * 240)) * m.heart; }
@@ -258,10 +269,10 @@ export function createTrackerScene(canvas, { onPickDay, onReady, onScrub } = {})
     baby.each((u) => {
       u.uTime.value = t; u.uScale.value = state.babyS;
       u.uSway.value = still ? 0 : m.sway * quiet; u.uBob.value = still ? 0 : m.bob * quiet;
-      u.uHeadAmp.value = still ? 0 : m.head; u.uHandAmp.value = still ? 0 : m.hand;
+      u.uHeadAmp.value = still ? 0 : m.head + state.nod * .06; u.uHandAmp.value = still ? 0 : m.hand;
       u.uBreath.value = still ? 0 : (m.breath + earlyPulse) * .3;
       u.uKick.value = kickAmp; u.uHiccup.value = state.hic * .007;
-      u.uHeart.value = beat; u.uLight.value.set(lx, ly);
+      u.uHeart.value = beat + state.glow * (.45 + .25 * Math.sin(t * 5)); u.uLight.value.set(lx, ly);
     });
     womb.each((u) => {
       u.uTime.value = t; u.uBump.value = kickAmp * .35; u.uLight.value.set(lx, ly);
@@ -355,11 +366,12 @@ export function createTrackerScene(canvas, { onPickDay, onReady, onScrub } = {})
     const d = nearestBead(e.clientX, e.clientY);
     if (d) { onPickDay && onPickDay(d); return; }
     kick(Math.max(.03, state.motion ? state.motion.kick : .03));
+    onTapBaby && onTapBaby();
   };
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => { state.pointerX = 0; state.pointerY = 0; });
 
   syncRunning();
-  return { setDay, kick };
+  return { setDay, kick, react };
 }

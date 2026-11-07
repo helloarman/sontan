@@ -51,6 +51,8 @@ When shipped files change, bump `VERSION` in `sw.js` so installed copies get fre
 | `data/pregnancy.json` | What to show and when: all 266 days, weeks 2-40, reminders, checkups, sources |
 | `assets/days/day-001.webp` to `day-266.webp` | One image per day |
 | `assets/layers/` | Separate womb and baby layers used by the 3D view |
+| `tools/baby-messages.mjs` | Everything the baby says, by week and by relation (`npm run data` after editing) |
+| `js/messages.js` | Picks the day's messages for the reader's relation |
 | `js/growth.js` | Day-to-stage and size rules, shared by the app and the image baker |
 | `js/scene.js` | Three.js tracker: motion, 266-bead dial, drag and tap |
 | `js/app.js` | Screens, due date storage (`localStorage` key `aanchol.v1`), install flow |

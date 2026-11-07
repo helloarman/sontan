@@ -2,6 +2,8 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as C from './content.mjs';
+import { RELATIONS, BY_WEEK, MOTHER, FATHER, FAMILY } from './baby-messages.mjs';
+import { messagesForDay } from '../js/messages.js';
 import { TOTAL_DAYS, gaFromDay, stageForDay, dayImage, dayLayers, wombScale, babyScale, STAGES } from '../js/growth.js';
 
 // Monotone cubic (Fritsch-Carlson) interpolation: smooth, and never overshoots,
@@ -67,6 +69,8 @@ const data = {
   },
   stages: STAGES.map(({ id, first, last, root, head, neck, chest, foot, hand }) => ({ id, firstDay: first, lastDay: last, firstGaWeek: Math.floor((first + 14) / 7), root, head, neck, chest, foot, hand })),
   trimesters: C.TRIMESTERS, weeks: C.WEEKS, reminders: C.REMINDERS, anc: C.ANC,
+  relations: RELATIONS,
+  babyMessages: { byWeek: BY_WEEK, mother: MOTHER, father: FATHER, family: FAMILY, note: C.MESSAGE_NOTE },
   dangerSigns: C.DANGER_SIGNS, food: C.FOOD, emergency: C.EMERGENCY,
   days,
 };
@@ -81,6 +85,29 @@ for (let i = 1; i < days.length; i++) {
 }
 for (let w = 2; w <= 40; w++) if (!C.WEEKS[w]) throw new Error('missing week ' + w);
 if (days.length !== 266 || days[265].gaDays !== 280) throw new Error('day mapping wrong');
+// Baby messages: each reader must get enough distinct messages, addressed to the right person.
+const nfc = (s) => s.normalize('NFC');
+// Whole words only: আমাকে and তোমাকে both contain মাকে.
+const word = (w) => `(^|[\\s,।])(${w})($|[\\s,।?!])`;
+const thirdPerson = new RegExp(nfc(word('মা|বাবা|মাকে|মায়ের|বাবার|বাবাকে') + '|তোমার পেট'));
+for (const [w, list] of Object.entries(BY_WEEK)) {
+  if (list.length < 4) throw new Error('week ' + w + ' needs 4 messages');
+  for (const m of list) if (thirdPerson.test(nfc(m))) throw new Error('general message names a relation: ' + m);
+}
+const motherWrong = new RegExp(nfc(word('মাকে|মায়ের|বাবা|বাবার')));
+for (const m of MOTHER) if (motherWrong.test(nfc(m.text))) throw new Error('mother message speaks about her: ' + m.text);
+for (const m of [...FATHER, ...FAMILY]) if (nfc(m.text).includes(nfc('তোমার পেট'))) throw new Error('wrong reader: ' + m.text);
+for (const m of FAMILY) if (nfc(m.text).includes(nfc('বাবা'))) throw new Error('family message assumes father: ' + m.text);
+let fewest = 99;
+for (const rel of [{ id: 'ma', name: 'মা' }, { id: 'baba', name: 'বাবা' }, { id: 'nani', name: 'নানি' }, { id: 'other', name: 'খালামণি' }]) {
+  for (const d of days) {
+    const msgs = messagesForDay(data, d, rel);
+    fewest = Math.min(fewest, msgs.length);
+    if (msgs.length < 5 || new Set(msgs).size !== msgs.length) throw new Error(`day ${d.day} ${rel.id}: ${msgs.length} messages`);
+    if (msgs.some((m) => m.includes('{'))) throw new Error('unfilled placeholder on day ' + d.day);
+  }
+}
+console.log('baby messages ok, at least', fewest, 'per day');
 const show = (d) => { const x = days[d - 1]; return `day ${d} = ${x.gaWeek}w${x.gaDay}d stage ${x.stage} ${x.lengthCm}cm ${x.lengthBasis} ${x.weightG}g bpm ${x.motion.bpm} kick ${x.motion.kick}`; };
 [1, 21, 22, 56, 125, 126, 182, 238, 266].forEach((d) => console.log(show(d)));
 console.log('wrote', out);

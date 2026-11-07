@@ -31,6 +31,8 @@ const need = (path, from) => { if (!files.has(path)) missing.push(`${path} (used
 const sandbox = { self: { addEventListener() {} }, location: {}, caches: {} };
 vm.runInNewContext(readFileSync(join(out, 'sw.js'), 'utf8') + ';globalThis.__list = PRECACHE;', sandbox);
 for (const p of sandbox.__list) if (p !== './') need(p, 'sw.js');
+// A script missing from the list would break the installed app offline.
+for (const f of files) if (f.startsWith('js/') && !sandbox.__list.includes(f)) missing.push(`${f} is not in the sw.js precache list`);
 
 // The JSON: an image and two layers for every day.
 const data = JSON.parse(readFileSync(join(out, 'data/pregnancy.json'), 'utf8'));
